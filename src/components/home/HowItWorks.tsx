@@ -21,42 +21,114 @@ const stepImages = [
 
 export default function HowItWorks() {
   const pin = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLElement | null)[]>([]);
   const [active, setActive] = useState(0);
 
   useEffect(() => {
     const el = pin.current;
     if (!el) return;
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    if (prefersReducedMotion() || isMobile) {
+
+    if (prefersReducedMotion()) {
       setActive(-1);
       return;
     }
 
-    const st = ScrollTrigger.create({
-      trigger: el,
-      start: "top top",
-      end: "+=100%",
-      pin: true,
-      scrub: true,
-      anticipatePin: 1,
-      onUpdate: (self) => {
-        const idx = Math.min(steps.length - 1, Math.floor(self.progress * steps.length));
-        setActive(idx);
-      },
+    const mm = gsap.matchMedia();
+
+    // ── Desktop Layout (>= 769px): Pinned scrub animation ────────────
+    mm.add("(min-width: 769px)", () => {
+      const st = ScrollTrigger.create({
+        trigger: el,
+        start: "top top",
+        end: "+=110%",
+        pin: true,
+        scrub: 0.5,
+        anticipatePin: 1,
+        onUpdate: (self) => {
+          const idx = Math.min(
+            steps.length - 1,
+            Math.floor(self.progress * steps.length)
+          );
+          setActive(idx);
+        },
+      });
+
+      return () => {
+        st.kill(true);
+      };
+    });
+
+    // ── Mobile & Tablet Layout (<= 768px): Per-card scroll spotlight ──
+    mm.add("(max-width: 768px)", () => {
+      const triggers: ScrollTrigger[] = [];
+
+      // Initial stagger reveal of cards as the section enters
+      if (cardRefs.current.length > 0) {
+        gsap.fromTo(
+          cardRefs.current,
+          { opacity: 0, y: 28 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.1,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: el,
+              start: "top 75%",
+            },
+          }
+        );
+      }
+
+      // Track active card as each card scrolls past the center reading zone
+      cardRefs.current.forEach((card, i) => {
+        if (!card) return;
+        const st = ScrollTrigger.create({
+          trigger: card,
+          start: "top 62%",
+          end: "bottom 38%",
+          onEnter: () => setActive(i),
+          onEnterBack: () => setActive(i),
+        });
+        triggers.push(st);
+      });
+
+      return () => {
+        triggers.forEach((t) => t.kill(true));
+      };
     });
 
     return () => {
-      st.kill(true);
+      mm.revert();
     };
   }, []);
 
+  function scrollToStep(index: number) {
+    setActive(index);
+    const targetCard = cardRefs.current[index];
+    if (targetCard) {
+      targetCard.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }
+
   return (
     <section id="how-it-works" className="relative">
-      <div ref={pin} className="mx-auto flex min-h-auto md:min-h-[100svh] max-w-7xl flex-col justify-center px-5 py-12 sm:px-6 md:py-18 md:px-8">
+      <div
+        ref={pin}
+        className="mx-auto flex min-h-auto md:min-h-[100svh] max-w-7xl flex-col justify-center px-5 py-12 sm:px-6 md:py-18 md:px-8"
+      >
         {/* Eyebrow badge */}
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-teal/20 bg-teal/5 px-3.5 py-1 text-xs font-semibold tracking-wider text-teal uppercase backdrop-blur-xs">
-            <svg className="h-3.5 w-3.5 text-teal" viewBox="0 0 24 24" fill="currentColor">
+            <svg
+              className="h-3.5 w-3.5 text-teal"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
               <path d="M12 0L14.6 9.4L24 12L14.6 14.6L12 24L9.4 14.6L0 12L9.4 9.4L12 0Z" />
             </svg>
             <span>How it works</span>
@@ -83,33 +155,123 @@ export default function HowItWorks() {
             </span>
           </h2>
         </div>
-        <div className="mt-7 md:mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+        {/* ── Mobile Interactive Step Tracker (visible on < md) ── */}
+        <div className="mt-6 mb-1 block md:hidden">
+          <div className="rounded-2xl border border-white/80 bg-white/60 p-3.5 shadow-xs backdrop-blur-md">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] font-semibold tracking-wider text-ink-soft uppercase">
+                Step Guide
+              </span>
+              <span className="text-xs font-bold text-coral">
+                {active >= 0 && steps[active]
+                  ? `${steps[active].n} · ${steps[active].title}`
+                  : "4 Quiet Steps"}
+              </span>
+            </div>
+
+            {/* Step navigation buttons with connecting line */}
+            <div className="relative flex items-center justify-between px-1">
+              {/* Inactive line */}
+              <div className="absolute left-4 right-4 h-1 bg-ink/10 rounded-full" />
+              {/* Active line fill */}
+              <div
+                className="absolute left-4 h-1 bg-coral rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width:
+                    active < 0
+                      ? "100%"
+                      : `${(active / (steps.length - 1)) * 100}%`,
+                  maxWidth: "calc(100% - 2rem)",
+                }}
+              />
+
+              {steps.map((step, i) => {
+                const isActive = i === active;
+                const isPassed = active === -1 || i <= active;
+                return (
+                  <button
+                    key={step.n}
+                    type="button"
+                    onClick={() => scrollToStep(i)}
+                    className={cn(
+                      "relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300",
+                      isActive
+                        ? "bg-coral text-white shadow-md ring-4 ring-coral/20 scale-110"
+                        : isPassed
+                        ? "bg-coral/80 text-white shadow-xs"
+                        : "bg-cream-deep text-ink-soft border border-ink/10"
+                    )}
+                    aria-label={`Jump to step ${step.n}: ${step.title}`}
+                  >
+                    {step.n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Steps Card Grid ── */}
+        <div className="mt-6 md:mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, i) => (
             <article
               key={step.n}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}
               className={cn(
-                "card-radius relative flex flex-col min-h-[290px] sm:min-h-[320px] overflow-hidden border border-white/80 p-5 sm:p-6 transition duration-500",
+                "card-radius relative flex flex-col min-h-[290px] sm:min-h-[320px] overflow-hidden border p-5 sm:p-6 transition-all duration-500 will-change-transform",
                 active === -1
-                  ? "opacity-100 shadow-[0_10px_30px_rgba(43,36,31,0.06)]"
+                  ? "border-white/80 opacity-100 shadow-[0_10px_30px_rgba(43,36,31,0.06)]"
                   : i === active
-                    ? "scale-[1.02] sm:scale-[1.03] opacity-100 shadow-[0_18px_40px_rgba(43,36,31,0.1)]"
-                    : "opacity-70",
+                  ? "border-coral/50 scale-[1.02] sm:scale-[1.03] opacity-100 shadow-[0_20px_45px_rgba(224,122,95,0.22)] ring-2 ring-coral/20"
+                  : "border-white/60 opacity-70 scale-[0.99]"
               )}
             >
-              {/* Background image — 100% opacity */}
+              {/* Background image */}
               <Image
                 src={stepImages[i]}
                 alt=""
                 fill
-                className="object-cover"
+                className="object-cover transition-transform duration-700 ease-out"
+                style={{
+                  transform: i === active ? "scale(1.04)" : "scale(1)",
+                }}
                 aria-hidden="true"
               />
 
               {/* Card content sits above inside a frosted glass box for readability */}
-              <div className="relative z-10 mt-auto rounded-xl bg-white/75 p-4 shadow-sm backdrop-blur-md">
-                <p className="font-display text-sm font-bold text-coral">{step.n}</p>
-                <h3 className="mt-1 font-display text-base sm:text-lg font-semibold text-ink">{step.title}</h3>
-                <p className="mt-1.5 sm:mt-2 text-xs leading-5 text-ink-soft">{step.body}</p>
+              <div
+                className={cn(
+                  "relative z-10 mt-auto rounded-xl p-4 shadow-sm backdrop-blur-md transition-all duration-300",
+                  i === active
+                    ? "bg-white/90 border border-coral/30 shadow-md"
+                    : "bg-white/75 border border-white/50"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <p
+                    className={cn(
+                      "font-display text-sm font-bold transition-colors",
+                      i === active ? "text-coral" : "text-coral/80"
+                    )}
+                  >
+                    {step.n}
+                  </p>
+                  {i === active && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-coral/10 px-2 py-0.5 text-[10px] font-semibold text-coral">
+                      <span className="h-1.5 w-1.5 rounded-full bg-coral animate-ping" />
+                      Active Step
+                    </span>
+                  )}
+                </div>
+                <h3 className="mt-1 font-display text-base sm:text-lg font-semibold text-ink">
+                  {step.title}
+                </h3>
+                <p className="mt-1.5 sm:mt-2 text-xs leading-5 text-ink-soft">
+                  {step.body}
+                </p>
               </div>
             </article>
           ))}
@@ -146,7 +308,10 @@ export default function HowItWorks() {
             {/* Liquid glassmorphism ultra-rounded container */}
             <div className="relative inline-flex items-center gap-3 sm:gap-4.5 rounded-2xl sm:rounded-full border border-white/80 bg-white/40 px-5 sm:px-8 py-3.5 sm:py-4 shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.95),inset_0_-1px_1px_rgba(255,255,255,0.4),0_20px_45px_rgba(43,36,31,0.08)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.95),0_25px_50px_rgba(43,36,31,0.12)] overflow-hidden group">
               {/* Dynamic motion fluid layer with website theme colors */}
-              <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-2xl sm:rounded-full" aria-hidden="true">
+              <div
+                className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-2xl sm:rounded-full"
+                aria-hidden="true"
+              >
                 <FluidBlobs
                   lightColors={["#3c7a6e", "#e07a5f", "#e8b56a", "#C85418"]}
                   blur={32}
@@ -161,12 +326,34 @@ export default function HowItWorks() {
                 <div className="absolute inset-x-0 bottom-0 h-16 sm:h-20 overflow-hidden opacity-45 pointer-events-none">
                   {/* Wave 1 (Back wave - warm coral/rust/amber) */}
                   <div className="absolute inset-0 w-[200%] h-full animate-wave-1 will-change-transform opacity-75">
-                    <svg className="w-full h-full" viewBox="0 0 1000 120" preserveAspectRatio="none">
+                    <svg
+                      className="w-full h-full"
+                      viewBox="0 0 1000 120"
+                      preserveAspectRatio="none"
+                    >
                       <defs>
-                        <linearGradient id="liquid-wave-grad-1" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#e07a5f" stopOpacity="0.8" />
-                          <stop offset="50%" stopColor="#C85418" stopOpacity="0.85" />
-                          <stop offset="100%" stopColor="#e8b56a" stopOpacity="0.8" />
+                        <linearGradient
+                          id="liquid-wave-grad-1"
+                          x1="0%"
+                          y1="0%"
+                          x2="100%"
+                          y2="0%"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#e07a5f"
+                            stopOpacity="0.8"
+                          />
+                          <stop
+                            offset="50%"
+                            stopColor="#C85418"
+                            stopOpacity="0.85"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#e8b56a"
+                            stopOpacity="0.8"
+                          />
                         </linearGradient>
                       </defs>
                       <path
@@ -178,12 +365,34 @@ export default function HowItWorks() {
 
                   {/* Wave 2 (Front wave - calm teal/emerald) */}
                   <div className="absolute inset-0 w-[200%] h-full animate-wave-2 will-change-transform opacity-65">
-                    <svg className="w-full h-full" viewBox="0 0 1000 120" preserveAspectRatio="none">
+                    <svg
+                      className="w-full h-full"
+                      viewBox="0 0 1000 120"
+                      preserveAspectRatio="none"
+                    >
                       <defs>
-                        <linearGradient id="liquid-wave-grad-2" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#3c7a6e" stopOpacity="0.85" />
-                          <stop offset="50%" stopColor="#2a9d8f" stopOpacity="0.9" />
-                          <stop offset="100%" stopColor="#84dcc6" stopOpacity="0.75" />
+                        <linearGradient
+                          id="liquid-wave-grad-2"
+                          x1="0%"
+                          y1="0%"
+                          x2="100%"
+                          y2="0%"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#3c7a6e"
+                            stopOpacity="0.85"
+                          />
+                          <stop
+                            offset="50%"
+                            stopColor="#2a9d8f"
+                            stopOpacity="0.9"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#84dcc6"
+                            stopOpacity="0.75"
+                          />
                         </linearGradient>
                       </defs>
                       <path
@@ -200,14 +409,32 @@ export default function HowItWorks() {
 
               {/* Hand-drawn Sprout & Sparkle vector icon */}
               <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal border border-teal/15 shadow-xs">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="h-6 w-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M12 22v-9" />
-                  <path d="M12 13c-3-3-6-2-6 2s3 4 6 2" fill="#3c7a6e22" />
-                  <path d="M12 10c3-3 6-2 6 2s-3 4-6 2" fill="#3c7a6e30" />
+                  <path
+                    d="M12 13c-3-3-6-2-6 2s3 4 6 2"
+                    fill="#3c7a6e22"
+                  />
+                  <path
+                    d="M12 10c3-3 6-2 6 2s-3 4-6 2"
+                    fill="#3c7a6e30"
+                  />
                   <circle cx="18" cy="4" r="1.5" fill="#e8b56a" stroke="none" />
                 </svg>
                 {/* Mini heart doodle */}
-                <svg className="absolute -top-1 -right-0.5 h-3.5 w-3.5 text-coral drop-shadow-xs" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  className="absolute -top-1 -right-0.5 h-3.5 w-3.5 text-coral drop-shadow-xs"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                 </svg>
               </div>
