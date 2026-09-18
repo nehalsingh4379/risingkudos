@@ -49,11 +49,11 @@ export default function Navbar() {
           <Image
             src="/logo_1.png"
             alt="Rising Kudos logo"
-            width={scrolled ? 56 : 72}
-            height={scrolled ? 56 : 72}
+            width={scrolled ? 48 : 58}
+            height={scrolled ? 58 : 70}
             priority
             className="transition-all duration-[400ms] shrink-0 sm:w-auto"
-            style={{ objectFit: "contain", height: scrolled ? "44px" : "56px", width: "auto" }}
+            style={{ objectFit: "contain", height: scrolled ? "42px" : "50px", width: "auto" }}
           />
         </Link>
 
