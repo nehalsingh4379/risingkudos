@@ -45,7 +45,7 @@ export default function Navbar() {
             : "mt-0 w-full max-w-7xl px-4 py-3.5 sm:px-6 sm:py-5 md:px-8",
         )}
       >
-        <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
+        <Link href="/" className="flex items-center" onClick={() => setOpen(false)} aria-label="Rising Kudos">
           <Image
             src="/logo_1.png"
             alt="Rising Kudos logo"
@@ -55,14 +55,6 @@ export default function Navbar() {
             className="transition-all duration-[400ms] shrink-0 sm:w-auto"
             style={{ objectFit: "contain", height: scrolled ? "44px" : "56px", width: "auto" }}
           />
-          <span
-            className={cn(
-              "font-display font-semibold tracking-tight text-ink transition-all duration-[400ms]",
-              scrolled ? "text-sm sm:text-base" : "text-base sm:text-lg",
-            )}
-          >
-            {site.name}
-          </span>
         </Link>
 
         <nav className="hidden items-center gap-4 md:flex lg:gap-7">
@@ -81,7 +73,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <AuroraButton href="/get-started" aurora={scrolled} size="sm" className="hidden sm:inline-flex">
+          <AuroraButton href="/get-started" aurora={scrolled} size="sm" className="hidden sm:inline-flex min-w-[124px] justify-center text-center">
             Get Started
           </AuroraButton>
           <button
