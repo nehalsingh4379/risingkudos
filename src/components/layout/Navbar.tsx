@@ -81,7 +81,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <AuroraButton href="/get-started" aurora={scrolled} className="hidden sm:inline-flex">
+          <AuroraButton href="/get-started" aurora={scrolled} size="sm" className="hidden sm:inline-flex">
             Get Started
           </AuroraButton>
           <button

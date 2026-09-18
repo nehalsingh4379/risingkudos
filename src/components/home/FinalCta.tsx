@@ -21,7 +21,7 @@ export default function FinalCta() {
         </p>
         <div className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-4">
           <AuroraButton href="/enquiry" aurora className="w-full sm:w-auto justify-center">
-            Book a Free Consultation
+            Book Consultation
           </AuroraButton>
         </div>
         <div className="flex justify-center">

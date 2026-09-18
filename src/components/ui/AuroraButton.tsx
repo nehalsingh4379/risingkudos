@@ -5,6 +5,7 @@ type Props = {
   href?: string;
   children: React.ReactNode;
   aurora?: boolean;
+  size?: "sm" | "md" | "lg";
   className?: string;
   onClick?: () => void;
   type?: "button" | "submit" | "reset";
@@ -15,19 +16,34 @@ export default function AuroraButton({
   href,
   children,
   aurora = false,
+  size = "md",
   className,
   onClick,
   type = "button",
   disabled,
 }: Props) {
+  const sizeClasses = {
+    sm: "px-3.5 py-1.5 sm:px-4 sm:py-1.5 text-xs sm:text-[13px] font-medium",
+    md: "px-5 py-2.5 sm:px-6 sm:py-3 text-sm font-semibold",
+    lg: "px-7 py-3.5 text-base font-semibold",
+  }[size];
+
   const commonClasses = aurora
-    ? "group relative inline-flex items-center justify-center rounded-full p-[2px] transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-    : "inline-flex items-center justify-center rounded-full bg-coral px-6 py-3 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(224,122,95,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(224,122,95,0.38)] active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+    ? "group relative inline-flex items-center justify-center rounded-full p-[1.5px] transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+    : cn(
+        "inline-flex items-center justify-center rounded-full bg-coral text-white shadow-[0_4px_16px_rgba(224,122,95,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(224,122,95,0.35)] active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none",
+        sizeClasses,
+      );
 
   const content = aurora ? (
     <>
       <span className="aurora-ring pointer-events-none absolute inset-0 rounded-full" />
-      <span className="relative z-10 flex h-full w-full items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition-colors duration-200 group-hover:bg-cream-deep/60">
+      <span
+        className={cn(
+          "relative z-10 flex h-full w-full items-center justify-center rounded-full bg-white text-ink transition-colors duration-200 group-hover:bg-cream-deep/60",
+          sizeClasses,
+        )}
+      >
         {children}
       </span>
     </>

@@ -119,7 +119,7 @@ export default function Hero() {
             </p>
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row sm:items-center gap-3.5 sm:gap-4">
               <AuroraButton href="/enquiry" aurora className="w-full sm:w-auto justify-center">
-                Book a Free Consultation
+                Book Consultation
               </AuroraButton>
               <a
                 href="#how-it-works"
