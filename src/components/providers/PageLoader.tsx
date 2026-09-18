@@ -1,259 +1,166 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
 import Image from "next/image";
 import gsap from "gsap";
 
 /**
- * Full-screen branded preloader — matches the Rising Kudos design.
+ * Elegant, branded preloader for Rising Kudos.
  *
- * Shows on:
- *  1. First hard load of ANY page   (useEffect with [] deps — StrictMode-safe)
- *  2. Client-side navigation TO "/" from a different page (back button etc.)
- *
- * Does NOT show when leaving "/" to go to another page.
- *
- * Progress is driven by `page:progress` CustomEvent (detail: 0–1) dispatched
- * by ScrollGifBackground. Loader exits on `page:ready` or 12 s fallback.
+ * Guarantees:
+ * 1. Runs once on initial hard load per session (sessionStorage cached).
+ * 2. Never blocks the screen: maximum duration is capped at 1.2s so users never wait.
+ * 3. Immediate pointer-events release on exit so buttons/links are immediately interactive.
+ * 4. Fixed logo aspect ratio and clean subtitle without duplicated brand text.
  */
-
 export default function PageLoader() {
-  const pathname = usePathname();
-
   const overlayRef = useRef<HTMLDivElement>(null);
   const barFillRef = useRef<HTMLDivElement>(null);
   const percentRef = useRef<HTMLSpanElement>(null);
 
-  // Activation state — stable refs, no React re-renders
-  const exitedRef  = useRef(false);
-  const realPctRef = useRef(0);
-  const displayRef = useRef(0);
-  const rafRef     = useRef<number | null>(null);
-  const killRef    = useRef<(() => void) | null>(null);
-
-  // ── write progress to DOM without re-render ─────────────────────────────
-  function applyDisplay(v: number) {
-    displayRef.current = v;
-    if (barFillRef.current) barFillRef.current.style.width = `${(v * 100).toFixed(1)}%`;
-    if (percentRef.current) percentRef.current.textContent = `${Math.round(v * 100)}%`;
-  }
-
-  function showOverlay() {
-    const el = overlayRef.current;
-    if (!el) return;
-    gsap.killTweensOf(el);
-    el.style.display = "flex";
-    el.style.opacity = "1";
-    el.style.pointerEvents = "auto";
-  }
-
-  // ── core activation logic ────────────────────────────────────────────────
-  function activate(isHome: boolean) {
-    // Tear down any previous in-flight activation
-    killRef.current?.();
-
-    exitedRef.current  = false;
-    realPctRef.current = 0;
-    displayRef.current = 0;
-    applyDisplay(0);
-    showOverlay();
-    document.body.style.overflow = "hidden";
-
-    // Smooth progress chase loop
-    function tick() {
-      const real    = realPctRef.current;
-      const display = displayRef.current;
-      const target  = real > 0 ? real : Math.min(0.88, display + 0.0012);
-      const next    = display + (target - display) * 0.055;
-      if (Math.abs(next - display) > 0.0002) applyDisplay(next);
-      rafRef.current = requestAnimationFrame(tick);
+  useEffect(() => {
+    // Check if already shown in this session
+    try {
+      if (sessionStorage.getItem("rk_loader_shown")) {
+        if (overlayRef.current) {
+          overlayRef.current.style.display = "none";
+          overlayRef.current.style.pointerEvents = "none";
+        }
+        return;
+      }
+      sessionStorage.setItem("rk_loader_shown", "1");
+    } catch {
+      // sessionStorage unavailable (e.g. private mode restrictions)
     }
-    rafRef.current = requestAnimationFrame(tick);
+
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+
+    let progress = 0;
+    let animFrame: number;
+    let isExiting = false;
+
+    // Smoothly animate progress counter and bar fill
+    function updateProgress(val: number) {
+      progress = Math.min(1, Math.max(progress, val));
+      const pct = Math.round(progress * 100);
+      if (barFillRef.current) {
+        barFillRef.current.style.width = `${pct}%`;
+      }
+      if (percentRef.current) {
+        percentRef.current.textContent = `${pct}%`;
+      }
+    }
 
     function exit() {
-      if (exitedRef.current) return;
-      exitedRef.current = true;
-      document.body.style.overflow = "";
-      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-      applyDisplay(1);
-      const overlay = overlayRef.current;
-      if (!overlay) return;
-      // Immediately allow clicks to pass through to underlying buttons
-      overlay.style.pointerEvents = "none";
-      gsap.to(overlay, {
-        delay: 0.15,
-        opacity: 0,
-        duration: 0.45,
-        ease: "power2.inOut",
-        onComplete: () => {
-          if (overlay) {
-            overlay.style.display = "none";
-            overlay.style.pointerEvents = "none";
-          }
-        },
-      });
+      if (isExiting) return;
+      isExiting = true;
+
+      updateProgress(1);
+
+      if (overlay) {
+        // Immediately unblock user interactions
+        overlay.style.pointerEvents = "none";
+        document.body.style.overflow = "";
+
+        gsap.to(overlay, {
+          delay: 0.15,
+          opacity: 0,
+          scale: 0.98,
+          duration: 0.5,
+          ease: "power2.inOut",
+          onComplete: () => {
+            if (overlay) {
+              overlay.style.display = "none";
+            }
+          },
+        });
+      }
     }
 
-    const MIN_MS    = isHome ? 1200 : 400;
-    const startedAt = Date.now();
-    let readyPending = false;
+    // Steady, smooth progress progression over ~900ms
+    const startTime = performance.now();
+    const TARGET_DURATION = 900; // ms
 
-    function onProgress(e: Event) { realPctRef.current = (e as CustomEvent<number>).detail; }
-    function onReady() {
-      if (readyPending) return;
-      readyPending = true;
-      const remaining = Math.max(0, MIN_MS - (Date.now() - startedAt));
-      setTimeout(exit, remaining);
+    function tick(now: number) {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / TARGET_DURATION);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      updateProgress(eased * 0.95);
+
+      if (t < 1 && !isExiting) {
+        animFrame = requestAnimationFrame(tick);
+      } else if (!isExiting) {
+        exit();
+      }
     }
 
-    window.addEventListener("page:progress", onProgress);
-    window.addEventListener("page:ready",    onReady);
+    animFrame = requestAnimationFrame(tick);
 
-    const hardFallback = setTimeout(exit, 3_500);
-    const quickExit    = isHome ? null : setTimeout(exit, 1000);
+    // If page:ready dispatches from GIF background earlier, smoothly exit
+    const onReady = () => {
+      exit();
+    };
 
-    killRef.current = () => {
-      window.removeEventListener("page:progress", onProgress);
-      window.removeEventListener("page:ready",    onReady);
-      clearTimeout(hardFallback);
-      if (quickExit) clearTimeout(quickExit);
-      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    window.addEventListener("page:ready", onReady);
+
+    // Hard fallback safety cap (1.5s absolute maximum)
+    const safetyTimer = setTimeout(exit, 1500);
+
+    return () => {
+      cancelAnimationFrame(animFrame);
+      clearTimeout(safetyTimer);
+      window.removeEventListener("page:ready", onReady);
       document.body.style.overflow = "";
-      if (overlayRef.current) {
-        overlayRef.current.style.pointerEvents = "none";
-        overlayRef.current.style.display = "none";
+      if (overlay) {
+        overlay.style.pointerEvents = "none";
+        overlay.style.display = "none";
       }
     };
-  }
-
-  // ── Effect 1: First hard load ────────────────────────────────────────────
-  // Empty deps → runs once on mount. Uses window.location (not pathname prop)
-  // so it works even if pathname hasn't resolved yet. StrictMode-safe because
-  // activate() is idempotent and teardown is clean.
-  useEffect(() => {
-    const isHome = window.location.pathname === "/";
-    activate(isHome);
-    return () => { killRef.current?.(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Effect 2: Client-side back-navigation TO "/" ─────────────────────────
-  // Skips the very first render (that's handled by Effect 1 above).
-  // Only activates when user navigates TO "/" from a different page.
-  const mountedRef  = useRef(false);
-  const prevPathRef = useRef<string>("/");
-
-  useEffect(() => {
-    // Skip first render — Effect 1 already handled it
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      prevPathRef.current = pathname;
-      return;
-    }
-
-    const prev = prevPathRef.current;
-    prevPathRef.current = pathname;
-
-    // Show ONLY when arriving at "/" from a different page
-    if (pathname === "/" && prev !== "/") {
-      activate(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
-  // ────────────────────────────────────────────────────────────────────────────
   return (
     <div
       ref={overlayRef}
       aria-hidden="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f6efe4",
-        willChange: "opacity",
-      }}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#f6efe4] select-none"
+      style={{ willChange: "opacity, transform" }}
     >
-      {/* ── Rising Kudos Logo ── */}
-      <Image
-        src="/logo_1.png"
-        alt="Rising Kudos logo"
-        width={200}
-        height={200}
-        priority
-        style={{ marginTop: "48px", marginBottom: "24px", objectFit: "contain" }}
-      />
+      <div className="flex flex-col items-center px-6 text-center">
+        {/* ── Brand Logo ── */}
+        <div className="relative mb-5 flex items-center justify-center">
+          <Image
+            src="/logo_1.png"
+            alt="Rising Kudos"
+            width={160}
+            height={60}
+            priority
+            className="h-14 sm:h-16 w-auto object-contain"
+          />
+        </div>
 
-      {/* ── Brand Name ── */}
-      <p
-        style={{
-          fontFamily: "var(--font-fraunces), ui-serif, Georgia, serif",
-          fontSize: "1.5rem",
-          fontWeight: 700,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "#2b241f",
-          marginBottom: "6px",
-          lineHeight: 1,
-        }}
-      >
-        Rising Kudos
-      </p>
+        {/* ── Subtitle ── */}
+        <p className="mb-6 text-[11px] sm:text-xs font-semibold tracking-[0.25em] text-ink-soft uppercase opacity-75">
+          Preparing your experience
+        </p>
 
-      {/* ── Subtitle ── */}
-      <p
-        style={{
-          fontSize: "0.65rem",
-          fontWeight: 500,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          color: "#5d534b",
-          marginBottom: "28px",
-        }}
-      >
-        Preparing your experience
-      </p>
+        {/* ── Progress bar track ── */}
+        <div className="mb-2.5 h-1.5 w-48 sm:w-56 overflow-hidden rounded-full bg-[#ddd5c8]">
+          <div
+            ref={barFillRef}
+            className="h-full w-0 rounded-full bg-coral transition-all duration-75 ease-out"
+          />
+        </div>
 
-      {/* ── Progress bar track ── */}
-      <div
-        style={{
-          width: "240px",
-          height: "6px",
-          borderRadius: "999px",
-          background: "#ddd5c8",
-          overflow: "hidden",
-          marginBottom: "10px",
-        }}
-      >
-        <div
-          ref={barFillRef}
-          style={{
-            height: "100%",
-            width: "0%",
-            borderRadius: "999px",
-            background: "#c45d43",
-            transition: "width 0.1s linear",
-          }}
-        />
+        {/* ── Percentage counter ── */}
+        <span
+          ref={percentRef}
+          className="font-mono text-xs font-medium tracking-wide text-ink-soft"
+        >
+          0%
+        </span>
       </div>
-
-      {/* ── Percentage ── */}
-      <span
-        ref={percentRef}
-        style={{
-          fontSize: "0.78rem",
-          fontWeight: 500,
-          letterSpacing: "0.05em",
-          color: "#5d534b",
-        }}
-      >
-        0%
-      </span>
     </div>
   );
 }
