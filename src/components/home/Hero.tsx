@@ -96,15 +96,15 @@ export default function Hero() {
       <div ref={pinRef} className="relative min-h-[100svh] overflow-hidden">
 
         {/* GIF background — fills the section */}
-        <div ref={canvasWrapRef} className="absolute inset-0 origin-center">
+        <div ref={canvasWrapRef} className="pointer-events-none absolute inset-0 origin-center">
           <ScrollGifBackground src={HERO_BG} />
           {/* Gradient overlays — identical to original */}
-          <div className="absolute inset-0 bg-gradient-to-r from-cream/88 via-cream/45 to-cream/10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-cream/50 via-transparent to-cream/20" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-cream/88 via-cream/45 to-cream/10" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-cream/50 via-transparent to-cream/20" />
         </div>
 
         {/* Hero copy */}
-        <div className="relative mx-auto grid min-h-[100svh] max-w-7xl items-center px-5 pt-24 pb-14 sm:px-6 sm:pt-28 sm:pb-16 md:px-8">
+        <div className="relative z-10 mx-auto grid min-h-[100svh] max-w-7xl items-center px-5 pt-24 pb-14 sm:px-6 sm:pt-28 sm:pb-16 md:px-8">
           <div ref={copyRef} className="max-w-2xl pr-0 sm:pr-8 will-change-transform">
             <p className="mb-3 text-xs sm:text-sm font-semibold tracking-wide text-teal uppercase">
               For families, not exam halls

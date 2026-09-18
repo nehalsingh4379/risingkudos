@@ -199,13 +199,28 @@ h3,
   }
 }
 
+@property --aurora-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes aurora-spin {
+  0% {
+    --aurora-angle: 0deg;
+  }
+  100% {
+    --aurora-angle: 360deg;
+  }
+}
+
 .aurora-ring {
   background: conic-gradient(
-    from var(--aurora-angle),
-    var(--coral),
-    var(--amber),
-    var(--teal),
-    var(--coral)
+    from var(--aurora-angle, 0deg),
+    #e07a5f,
+    #e8b56a,
+    #3c7a6e,
+    #e07a5f
   );
   animation: aurora-spin 3.2s linear infinite;
 }

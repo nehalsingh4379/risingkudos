@@ -161,6 +161,7 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
         window.dispatchEvent(new CustomEvent("page:ready"));
       } catch (err) {
         console.error("[ScrollGifBackground] Failed to decode GIF:", err);
+        window.dispatchEvent(new CustomEvent("page:ready"));
       }
     }
 

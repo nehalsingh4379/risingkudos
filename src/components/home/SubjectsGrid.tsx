@@ -325,18 +325,20 @@ export default function SubjectCarousel({ preview = false }: { preview?: boolean
 
         {/* Prev / Next buttons */}
         <button
+          type="button"
           onClick={() => goTo(-1)}
           aria-label="Previous subject"
-          className="absolute left-1 sm:left-0 top-1/2 z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/80 p-2.5 shadow-md backdrop-blur-sm transition hover:bg-white active:scale-95"
+          className="absolute left-1 sm:left-0 top-1/2 z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/80 p-2.5 shadow-md backdrop-blur-sm transition hover:bg-white active:scale-95 cursor-pointer"
         >
           <svg className="h-4 w-4 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <button
+          type="button"
           onClick={() => goTo(1)}
           aria-label="Next subject"
-          className="absolute right-1 sm:right-0 top-1/2 z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/80 p-2.5 shadow-md backdrop-blur-sm transition hover:bg-white active:scale-95"
+          className="absolute right-1 sm:right-0 top-1/2 z-20 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/80 p-2.5 shadow-md backdrop-blur-sm transition hover:bg-white active:scale-95 cursor-pointer"
         >
           <svg className="h-4 w-4 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5l7 7-7 7" />
@@ -344,16 +346,21 @@ export default function SubjectCarousel({ preview = false }: { preview?: boolean
         </button>
 
         {/* Dot indicators */}
-        <div className="absolute -bottom-2 inset-x-0 flex justify-center gap-2">
+        <div className="absolute -bottom-2 inset-x-0 flex justify-center gap-1">
           {subjects.map((_, i) => (
             <button
               key={i}
+              type="button"
               onClick={() => { setDirection(i > activeIndex ? 1 : -1); setPage(i); }}
               aria-label={`Go to subject ${i + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === activeIndex ? "w-6 bg-coral" : "w-2 bg-ink/20"
-              }`}
-            />
+              className="p-2 flex items-center justify-center min-w-[36px] min-h-[36px] cursor-pointer"
+            >
+              <span
+                className={`h-2 rounded-full transition-all duration-300 block ${
+                  i === activeIndex ? "w-6 bg-coral" : "w-2 bg-ink/25 hover:bg-ink/40"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>

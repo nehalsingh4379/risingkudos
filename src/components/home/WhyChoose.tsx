@@ -180,16 +180,21 @@ export default function WhyChoose() {
           </button>
 
           {/* Dot indicators */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {WHY_ITEMS.map((_, i) => (
               <button
                 key={i}
+                type="button"
                 onClick={() => goToCard(i)}
                 aria-label={`Go to reason ${i + 1}`}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  i === currentIndex ? "w-6 bg-coral" : "w-2 bg-ink/20"
-                }`}
-              />
+                className="p-2 flex items-center justify-center min-w-[36px] min-h-[36px]"
+              >
+                <span
+                  className={`h-2 rounded-full transition-all duration-300 block ${
+                    i === currentIndex ? "w-6 bg-coral" : "w-2 bg-ink/25 hover:bg-ink/40"
+                  }`}
+                />
+              </button>
             ))}
           </div>
 

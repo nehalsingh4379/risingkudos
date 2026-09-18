@@ -5,6 +5,7 @@ import Reveal from "@/components/ui/Reveal";
 import { packages } from "@/content/site";
 import { cn } from "@/lib/cn";
 import { FluidBlobs } from "@/components/ui/FluidBlobs";
+import AuroraButton from "@/components/ui/AuroraButton";
 
 const PRICING_GRADIENT_COLORS = ["#C85418", "#d86328", "#e3743c", "#f08953"];
 
@@ -73,14 +74,13 @@ export default function PricingPreview({ full = false }: { full?: boolean }) {
 
                   {/* Aurora CTA button */}
                   <div className="mt-8">
-                    <Link
+                    <AuroraButton
                       href="/enquiry"
-                      className="aurora-ring group relative flex w-full items-center justify-center overflow-hidden rounded-full p-px text-sm font-semibold text-ink transition"
+                      aurora
+                      className="w-full justify-center"
                     >
-                      <span className="relative z-10 flex w-full items-center justify-center rounded-full bg-white px-6 py-3 transition group-hover:bg-transparent group-hover:text-white">
-                        Continue with
-                      </span>
-                    </Link>
+                      Get started with {pkg.name}
+                    </AuroraButton>
                   </div>
                 </div>
               </article>
@@ -128,14 +128,12 @@ export default function PricingPreview({ full = false }: { full?: boolean }) {
                   </ul>
 
                   <div className="mt-8">
-                    <Link
+                    <AuroraButton
                       href="/enquiry"
-                      className="aurora-ring group relative flex w-full items-center justify-center overflow-hidden rounded-full p-px text-sm font-semibold text-ink transition"
+                      className="w-full justify-center"
                     >
-                      <span className="relative z-10 flex w-full items-center justify-center rounded-full bg-white px-6 py-3 transition group-hover:bg-transparent group-hover:text-white">
-                        Continue with
-                      </span>
-                    </Link>
+                      Choose {pkg.name}
+                    </AuroraButton>
                   </div>
                 </div>
               </article>

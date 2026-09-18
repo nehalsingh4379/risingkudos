@@ -45,6 +45,7 @@ export default function PageLoader() {
     gsap.killTweensOf(el);
     el.style.display = "flex";
     el.style.opacity = "1";
+    el.style.pointerEvents = "auto";
   }
 
   // ── core activation logic ────────────────────────────────────────────────
@@ -78,16 +79,23 @@ export default function PageLoader() {
       applyDisplay(1);
       const overlay = overlayRef.current;
       if (!overlay) return;
+      // Immediately allow clicks to pass through to underlying buttons
+      overlay.style.pointerEvents = "none";
       gsap.to(overlay, {
-        delay: 0.45,
+        delay: 0.15,
         opacity: 0,
-        duration: 0.65,
+        duration: 0.45,
         ease: "power2.inOut",
-        onComplete: () => { if (overlay) overlay.style.display = "none"; },
+        onComplete: () => {
+          if (overlay) {
+            overlay.style.display = "none";
+            overlay.style.pointerEvents = "none";
+          }
+        },
       });
     }
 
-    const MIN_MS    = isHome ? 2000 : 800;
+    const MIN_MS    = isHome ? 1200 : 400;
     const startedAt = Date.now();
     let readyPending = false;
 
@@ -102,8 +110,8 @@ export default function PageLoader() {
     window.addEventListener("page:progress", onProgress);
     window.addEventListener("page:ready",    onReady);
 
-    const hardFallback = setTimeout(exit, 12_000);
-    const quickExit    = isHome ? null : setTimeout(exit, 1200);
+    const hardFallback = setTimeout(exit, 3_500);
+    const quickExit    = isHome ? null : setTimeout(exit, 1000);
 
     killRef.current = () => {
       window.removeEventListener("page:progress", onProgress);
@@ -112,6 +120,10 @@ export default function PageLoader() {
       if (quickExit) clearTimeout(quickExit);
       if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       document.body.style.overflow = "";
+      if (overlayRef.current) {
+        overlayRef.current.style.pointerEvents = "none";
+        overlayRef.current.style.display = "none";
+      }
     };
   }
 

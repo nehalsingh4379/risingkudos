@@ -124,7 +124,7 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="mt-3 pt-3 border-t border-ink/10">
-                <AuroraButton href="/get-started" aurora className="w-full justify-center py-3.5" onClick={() => setOpen(false)}>
+                <AuroraButton href="/get-started" aurora className="w-full justify-center" onClick={() => setOpen(false)}>
                   Get Started
                 </AuroraButton>
               </div>
