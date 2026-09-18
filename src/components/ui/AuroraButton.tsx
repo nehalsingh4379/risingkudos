@@ -23,8 +23,8 @@ export default function AuroraButton({
   disabled,
 }: Props) {
   const sizeClasses = {
-    sm: "px-3.5 py-1.5 sm:px-4 sm:py-1.5 text-xs sm:text-[13px] font-medium",
-    md: "px-5 py-2.5 sm:px-6 sm:py-3 text-sm font-semibold",
+    sm: "px-3 py-1 text-xs font-semibold tracking-tight",
+    md: "px-5 py-2 sm:px-6 sm:py-2.5 text-sm font-semibold",
     lg: "px-7 py-3.5 text-base font-semibold",
   }[size];
 

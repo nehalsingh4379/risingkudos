@@ -20,8 +20,8 @@ export default function FinalCta() {
           Book a free consultation. No urgency timers — just a conversation about your child.
         </p>
         <div className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-4">
-          <AuroraButton href="/enquiry" aurora className="w-full sm:w-auto justify-center">
-            Book Consultation
+          <AuroraButton href="/enquiry" aurora className="w-auto justify-center">
+            Book Consult
           </AuroraButton>
         </div>
         <div className="flex justify-center">

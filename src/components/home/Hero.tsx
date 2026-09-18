@@ -117,9 +117,9 @@ export default function Hero() {
             <p className="mt-4 sm:mt-6 max-w-lg text-base sm:text-lg leading-7 sm:leading-8 text-ink-soft">
               {site.description}
             </p>
-            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row sm:items-center gap-3.5 sm:gap-4">
-              <AuroraButton href="/enquiry" aurora className="w-full sm:w-auto justify-center">
-                Book Consultation
+            <div className="mt-6 sm:mt-8 flex flex-row items-center gap-3.5 sm:gap-4 flex-wrap">
+              <AuroraButton href="/enquiry" aurora className="w-auto justify-center">
+                Book Consult
               </AuroraButton>
               <a
                 href="#how-it-works"
