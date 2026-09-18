@@ -36,28 +36,28 @@ export default function Navbar() {
   }, [open]);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center animate-in fade-in slide-in-from-top-2 duration-500 ease-out">
       <div
         className={cn(
-          "pointer-events-auto flex items-center justify-between gap-3 transition-all duration-[400ms] ease-out",
+          "pointer-events-auto flex items-center justify-between gap-3 rounded-full border shadow-[0_10px_35px_rgba(43,36,31,0.06)] backdrop-blur-xl transition-all duration-300 ease-out",
           scrolled
-            ? "mt-2.5 sm:mt-3 w-[min(1080px,calc(100%-1.5rem))] rounded-full border border-white/60 bg-white/70 px-3.5 py-1.5 shadow-[0_10px_40px_rgba(43,36,31,0.08)] backdrop-blur-xl sm:px-5 sm:py-2 md:px-6"
-            : "mt-0 w-full max-w-7xl px-4 py-3.5 sm:px-6 sm:py-5 md:px-8",
+            ? "mt-2 sm:mt-2.5 w-[min(1080px,calc(100%-1.5rem))] border-white/70 bg-white/85 px-3.5 py-1.5 shadow-[0_12px_44px_rgba(43,36,31,0.1)] sm:px-5 sm:py-2 md:px-6"
+            : "mt-2.5 sm:mt-3 w-[min(1120px,calc(100%-1.5rem))] border-white/60 bg-white/75 px-4 py-2 shadow-[0_8px_30px_rgba(43,36,31,0.05)] sm:px-6 sm:py-2.5 md:px-7",
         )}
       >
         <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
           <Image
             src="/logo_1.png"
             alt="Rising Kudos logo"
-            width={scrolled ? 56 : 72}
-            height={scrolled ? 56 : 72}
+            width={48}
+            height={48}
             priority
-            className="transition-all duration-[400ms] shrink-0 sm:w-auto"
-            style={{ objectFit: "contain", height: scrolled ? "44px" : "56px", width: "auto" }}
+            className="shrink-0 transition-all duration-300 sm:w-auto"
+            style={{ objectFit: "contain", height: scrolled ? "38px" : "44px", width: "auto" }}
           />
           <span
             className={cn(
-              "font-display font-semibold tracking-tight text-ink transition-all duration-[400ms]",
+              "font-display font-semibold tracking-tight text-ink transition-all duration-300",
               scrolled ? "text-sm sm:text-base" : "text-base sm:text-lg",
             )}
           >
@@ -81,7 +81,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <AuroraButton href="/get-started" aurora={scrolled} size="sm" className="hidden sm:inline-flex">
+          <AuroraButton href="/get-started" aurora size="sm" className="hidden sm:inline-flex">
             Get Started
           </AuroraButton>
           <button
