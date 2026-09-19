@@ -212,10 +212,10 @@ export default function PageLoader() {
             <Image
               src="/logo_1.png"
               alt="Rising Kudos"
-              width={160}
-              height={197}
+              width={180}
+              height={64}
               priority
-              className="h-20 sm:h-24 w-auto object-contain drop-shadow-sm"
+              className="h-14 sm:h-16 w-auto object-contain drop-shadow-sm"
             />
           </div>
         </div>

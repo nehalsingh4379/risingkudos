@@ -47,13 +47,13 @@ export default function Navbar() {
       >
         <Link href="/" className="flex items-center" onClick={() => setOpen(false)} aria-label="Rising Kudos">
           <Image
-            src="/logo_icon.png"
+            src="/logo_1.png"
             alt="Rising Kudos logo"
-            width={scrolled ? 42 : 52}
-            height={scrolled ? 46 : 57}
+            width={scrolled ? 56 : 72}
+            height={scrolled ? 56 : 72}
             priority
-            className="transition-all duration-[400ms] shrink-0 w-auto"
-            style={{ objectFit: "contain", height: scrolled ? "38px" : "48px", width: "auto" }}
+            className="transition-all duration-[400ms] shrink-0 sm:w-auto"
+            style={{ objectFit: "contain", height: scrolled ? "44px" : "56px", width: "auto" }}
           />
         </Link>
 
