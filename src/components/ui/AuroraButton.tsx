@@ -2,14 +2,13 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 
 type Props = {
-  href?: string;
+  href: string;
   children: React.ReactNode;
   aurora?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
+  innerClassName?: string;
   onClick?: () => void;
-  type?: "button" | "submit" | "reset";
-  disabled?: boolean;
 };
 
 export default function AuroraButton({
@@ -18,59 +17,54 @@ export default function AuroraButton({
   aurora = false,
   size = "md",
   className,
+  innerClassName,
   onClick,
-  type = "button",
-  disabled,
 }: Props) {
+  const isFullWidth = className?.includes("w-full");
   const sizeClasses = {
-    sm: "px-5 py-2 text-xs sm:text-sm font-semibold tracking-wide",
-    md: "px-6 py-2.5 sm:py-3 text-sm font-semibold",
-    lg: "px-7 py-3.5 text-base font-semibold",
+    sm: "px-4 py-1.5 text-xs sm:text-sm",
+    md: "px-6 py-3 text-sm",
+    lg: "px-7 py-3.5 text-base",
   }[size];
 
-  const commonClasses = aurora
-    ? "group relative inline-flex items-center justify-center rounded-full p-[1.5px] transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-    : cn(
-        "inline-flex items-center justify-center rounded-full bg-coral text-white shadow-[0_4px_16px_rgba(224,122,95,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(224,122,95,0.35)] active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none",
-        sizeClasses,
-      );
-
-  const content = aurora ? (
-    <>
-      <span className="aurora-ring pointer-events-none absolute inset-0 rounded-full" />
-      <span
-        className={cn(
-          "relative z-10 flex h-full w-full items-center justify-center rounded-full bg-white text-ink transition-colors duration-200 group-hover:bg-cream-deep/60",
-          sizeClasses,
-        )}
-      >
-        {children}
-      </span>
-    </>
-  ) : (
-    children
-  );
-
-  if (href) {
+  if (!aurora) {
     return (
       <Link
         href={href}
         onClick={onClick}
-        className={cn(commonClasses, className)}
+        className={cn(
+          "inline-flex items-center justify-center rounded-full bg-coral font-semibold text-white shadow-[0_8px_20px_rgba(224,122,95,0.28)] transition duration-300 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_12px_28px_rgba(224,122,95,0.38)] active:scale-[0.98] touch-manipulation select-none",
+          sizeClasses,
+          className,
+        )}
       >
-        {content}
+        {children}
       </Link>
     );
   }
 
   return (
-    <button
-      type={type}
+    <Link
+      href={href}
       onClick={onClick}
-      disabled={disabled}
-      className={cn(commonClasses, className)}
+      className={cn(
+        "group relative inline-flex items-center justify-center overflow-hidden rounded-full font-semibold text-white shadow-[0_8px_20px_rgba(224,122,95,0.28)] transition duration-300 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_12px_28px_rgba(224,122,95,0.38)] active:scale-[0.98] touch-manipulation select-none",
+        className,
+      )}
     >
-      {content}
-    </button>
+      <span className="aurora-ring pointer-events-none absolute inset-0 rounded-full" />
+      <span
+        className={cn(
+          "relative z-10 inline-flex items-center justify-center font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.32)]",
+          sizeClasses,
+          isFullWidth && "w-full text-center",
+          innerClassName,
+        )}
+      >
+        {children}
+      </span>
+    </Link>
   );
 }
+
+
