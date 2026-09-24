@@ -58,21 +58,62 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
       ctx.drawImage(bmp, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
     }
 
+    function paintImage(img: HTMLImageElement) {
+      if (!ctx || !canvas) return;
+      const cw = canvas.width;
+      const ch = canvas.height;
+      const nw = img.naturalWidth || 800;
+      const nh = img.naturalHeight || 450;
+      const scale = Math.max(cw / nw, ch / nh);
+      const dw = nw * scale;
+      const dh = nh * scale;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    }
+
+    // Immediately load and paint lightweight poster so canvas is never blank
+    let posterImg: HTMLImageElement | null = new Image();
+    posterImg.src = "/video/hero-poster.webp";
+    posterImg.onload = () => {
+      if (!alive || !canvas) return;
+      if (frameCount === 0) {
+        paintImage(posterImg!);
+      }
+    };
+
     // Imperative handle — Hero.tsx calls this on every ScrollTrigger update
     handleRef.current = {
       setProgress: (p: number) => {
-        if (!frameCount) return;
+        if (!frameCount) {
+          onProgress?.(p);
+          return;
+        }
         const idx = Math.round(Math.max(0, Math.min(1, p)) * (frameCount - 1));
         paintFrame(idx);
         onProgress?.(p);
       },
     };
 
-    // Expose handle on canvas dataset so Hero can reach it without prop drilling
+    // Expose handle on canvas dataset immediately so Hero can reach it without delay
     (canvas as unknown as { __gifHandle: ScrollGifHandle }).__gifHandle =
       handleRef.current;
 
-    // ── GIF decode ────────────────────────────────────────────────────────────
+    // On mobile devices (<= 768px), keep the fast, zero-memory poster to avoid
+    // 4.6MB download, 100-frame CPU lockup, and Safari memory exhaustion.
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      window.dispatchEvent(new CustomEvent("page:ready"));
+      resize();
+      window.addEventListener("resize", resize);
+      return () => {
+        alive = false;
+        posterImg = null;
+        window.removeEventListener("resize", resize);
+        handleRef.current = null;
+      };
+    }
+
+    // ── Desktop GIF decode ────────────────────────────────────────────────────
     async function loadGif() {
       try {
         const res = await fetch(src);
@@ -146,16 +187,6 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
 
         frames = bitmaps;
         frameCount = bitmaps.length;
-        // Update the handle now that frameCount is known
-        handleRef.current!.setProgress = (p: number) => {
-          if (!frameCount) return;
-          const idx = Math.round(Math.max(0, Math.min(1, p)) * (frameCount - 1));
-          paintFrame(idx);
-          onProgress?.(p);
-        };
-        (canvas as unknown as { __gifHandle: ScrollGifHandle }).__gifHandle =
-          handleRef.current!;
-
         paintFrame(0); // show first frame immediately
         // Signal PageLoader: GIF fully decoded and painted
         window.dispatchEvent(new CustomEvent("page:ready"));

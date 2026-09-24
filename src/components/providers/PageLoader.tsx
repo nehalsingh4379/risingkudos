@@ -3,6 +3,9 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 /**
  * Luxury, high-performance branded preloader for Rising Kudos.
@@ -23,42 +26,18 @@ export default function PageLoader() {
   const statusRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    // Check if already shown in this session (skips on SPA route changes)
-    try {
-      if (sessionStorage.getItem("rk_loader_shown")) {
-        if (overlayRef.current) {
-          overlayRef.current.style.display = "none";
-          overlayRef.current.style.pointerEvents = "none";
-        }
-        return;
-      }
-      sessionStorage.setItem("rk_loader_shown", "1");
-    } catch {
-      // sessionStorage unavailable
-    }
-
-    // Clear session flag on page unload so refreshing (F5) re-enables the animation
-    const handleBeforeUnload = () => {
-      try {
-        sessionStorage.removeItem("rk_loader_shown");
-      } catch {
-        // ignore
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
     const overlay = overlayRef.current;
     const content = contentRef.current;
     if (!overlay || !content) return;
 
-    // Prevent background scrolling while loading
-    document.body.style.overflow = "hidden";
+    // Ensure pointer events are active on overlay during load
+    overlay.style.pointerEvents = "auto";
 
     // ── 1. Choreographed Entrance Animation ──────────────────────────
     gsap.fromTo(
       content,
-      { opacity: 0, y: 22, scale: 0.94 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }
+      { opacity: 0, y: 20, scale: 0.95 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "power3.out" }
     );
 
     // Subtle breathing/floating hover on the brand logo
@@ -113,21 +92,32 @@ export default function PageLoader() {
 
       floatTween.kill();
 
+      // Absolute failsafe to ensure overlay is gone even on low-power devices
+      const safetyHide = setTimeout(() => {
+        if (overlay) {
+          overlay.style.display = "none";
+          overlay.style.pointerEvents = "none";
+        }
+        ScrollTrigger.refresh();
+      }, 1100);
+
       const exitTl = gsap.timeline({
-        delay: 0.12,
+        delay: 0.1,
         onComplete: () => {
+          clearTimeout(safetyHide);
           if (overlay) {
             overlay.style.display = "none";
           }
+          ScrollTrigger.refresh();
         },
       });
 
       // Content gently lifts and fades out
       exitTl.to(content, {
-        y: -26,
+        y: -24,
         opacity: 0,
         scale: 0.96,
-        duration: 0.36,
+        duration: 0.32,
         ease: "power2.in",
       });
 
@@ -136,10 +126,10 @@ export default function PageLoader() {
         overlay,
         {
           yPercent: -100,
-          duration: 0.68,
-          ease: "power4.inOut",
+          duration: 0.65,
+          ease: "power3.inOut",
         },
-        "-=0.18"
+        "-=0.16"
       );
     }
 
@@ -163,9 +153,12 @@ export default function PageLoader() {
 
     animFrame = requestAnimationFrame(tick);
 
-    // Also respond if background signals ready
+    // Also respond if background signals ready (only after minimum 500ms to avoid flicker)
     const onReady = () => {
-      exit();
+      const elapsed = performance.now() - startTime;
+      if (elapsed >= 500) {
+        exit();
+      }
     };
     window.addEventListener("page:ready", onReady);
 
@@ -175,7 +168,6 @@ export default function PageLoader() {
     return () => {
       cancelAnimationFrame(animFrame);
       clearTimeout(safetyTimer);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("page:ready", onReady);
       floatTween.kill();
       document.body.style.overflow = "";
@@ -183,6 +175,7 @@ export default function PageLoader() {
         overlay.style.pointerEvents = "none";
         overlay.style.display = "none";
       }
+      ScrollTrigger.refresh();
     };
   }, []);
 

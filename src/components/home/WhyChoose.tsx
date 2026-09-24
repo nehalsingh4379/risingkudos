@@ -16,32 +16,32 @@ const WHY_ITEMS: SliderItemData[] = [
   {
     num: "01",
     title: "Expert, Vetted Tutors",
-    imageUrl: "/carousal cards/why1.png",
+    imageUrl: "/carousal cards/why1.webp",
   },
   {
     num: "02",
     title: "Personalised Learning Plans",
-    imageUrl: "/carousal cards/why2.png",
+    imageUrl: "/carousal cards/why2.webp",
   },
   {
     num: "03",
     title: "Real Progress, Real Fast",
-    imageUrl: "/carousal cards/why3.png",
+    imageUrl: "/carousal cards/why3.webp",
   },
   {
     num: "04",
     title: "Flexible Scheduling",
-    imageUrl: "/carousal cards/why4.png",
+    imageUrl: "/carousal cards/why4.webp",
   },
   {
     num: "05",
     title: "Confidence That Lasts",
-    imageUrl: "/carousal cards/why5.png",
+    imageUrl: "/carousal cards/why5.webp",
   },
   {
     num: "06",
     title: "Parents Always in the Loop",
-    imageUrl: "/carousal cards/why6.png",
+    imageUrl: "/carousal cards/why6.webp",
   },
 ];
 
