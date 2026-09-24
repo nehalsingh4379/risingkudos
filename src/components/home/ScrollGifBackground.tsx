@@ -35,14 +35,23 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
     let alive = true;
     let frames: ImageBitmap[] = [];
     let frameCount = 0;
+    let currentProgress = 0;
 
     /** Keep the canvas buffer sized to its CSS layout box at device pixel ratio */
     function resize() {
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
+      if (frameCount > 0) {
+        const idx = Math.round(
+          Math.max(0, Math.min(1, currentProgress)) * (frameCount - 1)
+        );
+        paintFrame(idx);
+      } else if (posterImg?.complete) {
+        paintImage(posterImg);
+      }
     }
 
     /** Cover-style render of a given bitmap frame */
@@ -84,12 +93,11 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
     // Imperative handle — Hero.tsx calls this on every ScrollTrigger update
     handleRef.current = {
       setProgress: (p: number) => {
-        if (!frameCount) {
-          onProgress?.(p);
-          return;
+        currentProgress = p;
+        if (frameCount > 0) {
+          const idx = Math.round(Math.max(0, Math.min(1, p)) * (frameCount - 1));
+          paintFrame(idx);
         }
-        const idx = Math.round(Math.max(0, Math.min(1, p)) * (frameCount - 1));
-        paintFrame(idx);
         onProgress?.(p);
       },
     };
@@ -98,24 +106,14 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
     (canvas as unknown as { __gifHandle: ScrollGifHandle }).__gifHandle =
       handleRef.current;
 
-    // On mobile devices (<= 768px), keep the fast, zero-memory poster to avoid
-    // 4.6MB download, 100-frame CPU lockup, and Safari memory exhaustion.
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-      window.dispatchEvent(new CustomEvent("page:ready"));
-      resize();
-      window.addEventListener("resize", resize);
-      return () => {
-        alive = false;
-        posterImg = null;
-        window.removeEventListener("resize", resize);
-        handleRef.current = null;
-      };
-    }
-
-    // ── Desktop GIF decode ────────────────────────────────────────────────────
+    // ── High-performance GIF decode (adaptive for Mobile & Desktop) ───────────
     async function loadGif() {
       try {
+        const isMobile = window.innerWidth <= 768;
+        // On mobile: sample every 3rd frame (~34 frames = 48MB, 60fps scrub)
+        // On desktop: decode all 100 frames for 100% frame fidelity
+        const step = isMobile ? 3 : 1;
+
         const res = await fetch(src);
         const buf = await res.arrayBuffer();
         const gif = parseGIF(buf);
@@ -139,11 +137,19 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
 
         const totalFrames = rawFrames.length;
         for (let fi = 0; fi < totalFrames; fi++) {
+          if (!alive) {
+            bitmaps.forEach((b) => b.close());
+            return;
+          }
+
           const frame = rawFrames[fi];
           const { dims, patch, disposalType } = frame;
 
+          const shouldKeepBitmap =
+            fi === 0 || fi % step === 0 || fi === totalFrames - 1;
+
           if (!patch || patch.length !== dims.width * dims.height * 4) {
-            if (bitmaps.length > 0) {
+            if (shouldKeepBitmap && bitmaps.length > 0) {
               bitmaps.push(await createImageBitmap(bitmaps[bitmaps.length - 1]));
             }
             window.dispatchEvent(
@@ -165,7 +171,10 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
           );
 
           compCtx.drawImage(scratch, dims.left, dims.top);
-          bitmaps.push(await createImageBitmap(composite));
+
+          if (shouldKeepBitmap) {
+            bitmaps.push(await createImageBitmap(composite));
+          }
 
           if (disposalType === 2) {
             compCtx.clearRect(dims.left, dims.top, dims.width, dims.height);
@@ -178,6 +187,11 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
           window.dispatchEvent(
             new CustomEvent("page:progress", { detail: (fi + 1) / totalFrames })
           );
+
+          // Yield to event loop every 6 frames so touch scroll and loader never stutter
+          if (fi % 6 === 0) {
+            await new Promise((r) => setTimeout(r, 0));
+          }
         }
 
         if (!alive) {
@@ -187,7 +201,13 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
 
         frames = bitmaps;
         frameCount = bitmaps.length;
-        paintFrame(0); // show first frame immediately
+
+        // Render current progress frame immediately
+        const initialIdx = Math.round(
+          Math.max(0, Math.min(1, currentProgress)) * (frameCount - 1)
+        );
+        paintFrame(initialIdx);
+
         // Signal PageLoader: GIF fully decoded and painted
         window.dispatchEvent(new CustomEvent("page:ready"));
       } catch (err) {
@@ -202,6 +222,7 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
 
     return () => {
       alive = false;
+      posterImg = null;
       window.removeEventListener("resize", resize);
       frames.forEach((b) => b.close());
       handleRef.current = null;

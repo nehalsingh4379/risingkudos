@@ -26,6 +26,13 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
 
     lenis.on("scroll", ScrollTrigger.update);
 
+    // On Android / touch devices with syncTouch: false, native touch scrolling does not
+    // pass through Lenis. We must listen to window scroll to keep GSAP ScrollTrigger in sync.
+    const onNativeScroll = () => {
+      ScrollTrigger.update();
+    };
+    window.addEventListener("scroll", onNativeScroll, { passive: true });
+
     const onTick = (time: number) => {
       lenis.raf(time * 1000);
     };
@@ -35,12 +42,14 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
 
     const onResize = () => ScrollTrigger.refresh();
     window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
 
     return () => {
+      window.removeEventListener("scroll", onNativeScroll);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
       gsap.ticker.remove(onTick);
       lenis.destroy();
-      ScrollTrigger.getAll().forEach((t) => t.kill(true));
     };
   }, []);
 

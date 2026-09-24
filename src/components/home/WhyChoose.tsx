@@ -93,13 +93,16 @@ export default function WhyChoose() {
     const pinEl = pinRef.current;
     if (!section || !pinEl) return;
 
+    const isMobile = window.innerWidth <= 768;
+    const totalScroll = isMobile ? `+=${(WHY_ITEMS.length - 1) * 65}vh` : TOTAL_SCROLL;
+    const scrubValue = isMobile ? 0.35 : 1.2;
+
     const st = ScrollTrigger.create({
       trigger: section,
       pin: pinEl,
       start: "top top",
-      // Pin for 6 × 100vh so each of the 6 card transitions gets one full viewport of scroll
-      end: TOTAL_SCROLL,
-      scrub: 1.2,           // slight lag for a silky feel
+      end: totalScroll,
+      scrub: scrubValue,
       anticipatePin: 1,
       onUpdate: (self) => {
         // Map 0→1 scroll progress to 0→100 slider progress

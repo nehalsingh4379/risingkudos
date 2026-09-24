@@ -45,12 +45,13 @@ export default function Hero() {
 
       // ── 2. Create the scroll-pinned trigger ───────────────────────────────
       // Pin the inner wrapper so the outer section remains a direct child of <main>
+      const isMobile = window.innerWidth <= 768;
       st = ScrollTrigger.create({
         trigger: section,
         pin: pinEl,
         start: "top top",
         end: "+=200%",       // 2 extra viewport-heights of scroll = GIF duration
-        scrub: 0.6,          // smooth lag — feels cinematic
+        scrub: isMobile ? 0.2 : 0.6,          // instant touch response on mobile, cinematic on desktop
         anticipatePin: 1,
         onUpdate: (self) => {
           // Drive GIF frame directly from scroll progress (0→1)
