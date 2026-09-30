@@ -39,10 +39,16 @@ export default function Footer() {
         <div className="text-sm">
           <p className="font-semibold text-ink">Office</p>
           <address className="mt-2 not-italic leading-6 text-ink-soft">
-            Prashant Nagar<br />
-            Devanahalli Town<br />
-            Bangalore 562110
+            Molanachak Jagdishpur<br />
+            Bhagalpur, Bihar-813105
           </address>
+          <p className="mt-3 font-semibold text-ink">Phone</p>
+          <a
+            href={`tel:${site.phone.replace(/\s+/g, "")}`}
+            className="mt-1 inline-block text-ink-soft hover:text-coral transition-colors"
+          >
+            {site.phone}
+          </a>
         </div>
         <div className="flex flex-col gap-2 text-sm text-ink-soft">
           <p className="font-semibold text-ink">Legal</p>

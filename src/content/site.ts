@@ -3,7 +3,8 @@ export const site = {
   tagline: "Calm tutoring that grows confidence",
   description:
     "Warm, 1:1 tutoring for English, Maths, Science, 11+ and GCSE — built around the child, never the exam hall.",
-  address: "Prashant Nagar, Devanahalli Town, Bangalore 562110",
+  address: "Molanachak Jagdishpur Bhagalpur, Bihar-813105",
+  phone: "+91 9608477509",
 };
 
 export const navLinks = [

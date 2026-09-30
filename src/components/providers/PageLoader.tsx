@@ -5,6 +5,8 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+import { usePathname } from "next/navigation";
+
 gsap.registerPlugin(ScrollTrigger);
 
 /**
@@ -13,11 +15,15 @@ gsap.registerPlugin(ScrollTrigger);
  * Highlights:
  * 1. Hardware-accelerated GPU transforms (scaleX) with zero layout thrashing.
  * 2. Elegant animated aura, floating logo breathing effect, and shimmering gradient bar.
- * 3. Dynamic status beacon with smooth live percentage updates.
- * 4. Theatrical curtain-up exit reveal with immediate interactive pointer release.
- * 5. Clean session tracking: persists across in-page navigation, but smoothly replays on reload.
+ * 3. Dynamic status beacon with smooth live percentage updates tied to actual asset loading.
+ * 4. Waits until background GIF is completely downloaded, decompressed, and frame-painted.
+ * 5. Scroll lock during load to prevent jarring scrub desync.
+ * 6. Theatrical curtain-up exit reveal with immediate interactive pointer release.
  */
 export default function PageLoader() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const logoBoxRef = useRef<HTMLDivElement>(null);
@@ -29,6 +35,19 @@ export default function PageLoader() {
     const overlay = overlayRef.current;
     const content = contentRef.current;
     if (!overlay || !content) return;
+
+    // Lock page scroll and reset to top during load
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    window.scrollTo(0, 0);
+
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+    window.addEventListener("wheel", preventScroll, { passive: false });
+    window.addEventListener("touchmove", preventScroll, { passive: false });
 
     // Ensure pointer events are active on overlay during load
     overlay.style.pointerEvents = "auto";
@@ -49,8 +68,41 @@ export default function PageLoader() {
       ease: "sine.inOut",
     });
 
-    let animFrame: number;
+    let currentProgress = 0;
+    let targetProgress = 0.08;
+    let isGifReady =
+      !isHome || Boolean((window as unknown as { __bgGifReady?: boolean }).__bgGifReady);
+    let isWindowLoaded = typeof document !== "undefined" && document.readyState === "complete";
+    let isFontsLoaded = false;
     let isExiting = false;
+    let animFrame: number;
+    const startTime = performance.now();
+    const MIN_DISPLAY_MS = 600;
+
+    // Track window load (scripts, stylesheets, components, and all standard media)
+    if (!isWindowLoaded) {
+      const onWindowLoad = () => {
+        isWindowLoaded = true;
+      };
+      window.addEventListener("load", onWindowLoad, { once: true });
+    }
+
+    // Track web fonts (Google Sans Flex, Oswald, etc.)
+    if (typeof document !== "undefined" && "fonts" in document) {
+      document.fonts.ready.then(() => {
+        isFontsLoaded = true;
+      });
+    } else {
+      isFontsLoaded = true;
+    }
+
+    // Helper to verify all DOM <img> elements have finished downloading
+    function checkAllImagesComplete(): boolean {
+      if (typeof document === "undefined") return true;
+      const images = Array.from(document.images);
+      if (images.length === 0) return true;
+      return images.every((img) => img.complete);
+    }
 
     // ── 2. Hardware-Accelerated Progress Updates ─────────────────────
     function setProgress(val: number) {
@@ -65,12 +117,12 @@ export default function PageLoader() {
       }
 
       if (statusRef.current) {
-        if (pct < 35) {
+        if (pct < 25) {
           statusRef.current.textContent = "Initializing experience";
-        } else if (pct < 75) {
-          statusRef.current.textContent = "Crafting interface";
-        } else if (pct < 100) {
-          statusRef.current.textContent = "Preparing assets";
+        } else if (pct < 65) {
+          statusRef.current.textContent = "Loading visual assets";
+        } else if (pct < 98) {
+          statusRef.current.textContent = "Preparing interface";
         } else {
           statusRef.current.textContent = "Welcome to Rising Kudos";
         }
@@ -82,13 +134,19 @@ export default function PageLoader() {
       if (isExiting) return;
       isExiting = true;
 
+      cancelAnimationFrame(animFrame);
+      clearTimeout(safetyTimer);
       setProgress(1);
 
-      // Instantly free user interactions
+      // Restore scroll and user interactions
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      window.removeEventListener("wheel", preventScroll);
+      window.removeEventListener("touchmove", preventScroll);
+
       if (overlay) {
         overlay.style.pointerEvents = "none";
       }
-      document.body.style.overflow = "";
 
       floatTween.kill();
 
@@ -102,7 +160,7 @@ export default function PageLoader() {
       }, 1100);
 
       const exitTl = gsap.timeline({
-        delay: 0.1,
+        delay: 0.05,
         onComplete: () => {
           clearTimeout(safetyHide);
           if (overlay) {
@@ -133,51 +191,105 @@ export default function PageLoader() {
       );
     }
 
-    // ── 4. Natural Progress Driver (~950ms) ───────────────────────────
-    const startTime = performance.now();
-    const TARGET_DURATION = 950;
-
-    function tick(now: number) {
-      const elapsed = now - startTime;
-      const t = Math.min(1, elapsed / TARGET_DURATION);
-      // Buttery smooth cubic ease-out curve
-      const eased = 1 - Math.pow(1 - t, 3);
-      setProgress(eased);
-
-      if (t < 1 && !isExiting) {
-        animFrame = requestAnimationFrame(tick);
-      } else if (!isExiting) {
-        exit();
+    // ── 4. Asset Progress Driven by Background GIF & DOM Assets ───────
+    const onProgress = (e: Event) => {
+      const custom = e as CustomEvent;
+      const val =
+        typeof custom.detail === "number"
+          ? custom.detail
+          : custom.detail?.progress;
+      if (typeof val === "number" && !isNaN(val)) {
+        targetProgress = Math.max(targetProgress, Math.min(1, val));
       }
+    };
+
+    const onReady = () => {
+      isGifReady = true;
+    };
+
+    window.addEventListener("page:progress", onProgress);
+    window.addEventListener("page:ready", onReady);
+
+    function tick() {
+      if (isExiting) return;
+
+      const now = performance.now();
+      const elapsed = now - startTime;
+      const allImagesDone = checkAllImagesComplete();
+      const isEverythingLoaded =
+        isGifReady && isWindowLoaded && isFontsLoaded && allImagesDone;
+
+      if (!isHome) {
+        // Subpage: driven by images, fonts, and DOM readiness
+        const imagesRatio = allImagesDone ? 1 : 0.7;
+        const fontsRatio = isFontsLoaded ? 1 : 0.8;
+        const windowRatio = isWindowLoaded ? 1 : 0.6;
+        const domProgress = (imagesRatio + fontsRatio + windowRatio) / 3;
+
+        targetProgress = Math.max(targetProgress, domProgress);
+      } else {
+        // Home page: gently creep up to ~15% if initial network packets haven't fired yet
+        if (!isGifReady && targetProgress < 0.15) {
+          targetProgress = Math.min(0.15, 0.08 + elapsed / 3000);
+        }
+      }
+
+      if (isEverythingLoaded) {
+        targetProgress = 1.0;
+      }
+
+      // Smooth interpolation towards targetProgress
+      const lerpSpeed = isEverythingLoaded ? 0.14 : 0.07;
+      currentProgress += (targetProgress - currentProgress) * lerpSpeed;
+
+      if (isEverythingLoaded && targetProgress >= 0.999 && Math.abs(1 - currentProgress) < 0.01) {
+        currentProgress = 1;
+      }
+
+      setProgress(currentProgress);
+
+      // Complete once background GIF, images, fonts, and window are completely loaded
+      if (isEverythingLoaded && currentProgress >= 0.995 && elapsed >= MIN_DISPLAY_MS) {
+        setProgress(1);
+        setTimeout(() => {
+          exit();
+        }, 180);
+        return;
+      }
+
+      animFrame = requestAnimationFrame(tick);
     }
 
     animFrame = requestAnimationFrame(tick);
 
-    // Also respond if background signals ready (only after minimum 500ms to avoid flicker)
-    const onReady = () => {
-      const elapsed = performance.now() - startTime;
-      if (elapsed >= 500) {
+    // Hard fallback failsafe: 12 seconds in case network drops
+    const safetyTimer = setTimeout(() => {
+      if (!isExiting) {
+        isGifReady = true;
+        isWindowLoaded = true;
+        isFontsLoaded = true;
+        targetProgress = 1.0;
         exit();
       }
-    };
-    window.addEventListener("page:ready", onReady);
-
-    // Hard fallback cap at 1.4s
-    const safetyTimer = setTimeout(exit, 1400);
+    }, 12000);
 
     return () => {
       cancelAnimationFrame(animFrame);
       clearTimeout(safetyTimer);
+      window.removeEventListener("page:progress", onProgress);
       window.removeEventListener("page:ready", onReady);
+      window.removeEventListener("wheel", preventScroll);
+      window.removeEventListener("touchmove", preventScroll);
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
       floatTween.kill();
-      document.body.style.overflow = "";
       if (overlay) {
         overlay.style.pointerEvents = "none";
         overlay.style.display = "none";
       }
       ScrollTrigger.refresh();
     };
-  }, []);
+  }, [isHome]);
 
   return (
     <div

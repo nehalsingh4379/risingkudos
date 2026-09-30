@@ -16,8 +16,8 @@ const oswald = Oswald({
 
 export const metadata: Metadata = {
   title: {
-    default: `${site.name} — ${site.tagline}`,
-    template: `%s · ${site.name}`,
+    default: `${site.name} Â— ${site.tagline}`,
+    template: `%s Â· ${site.name}`,
   },
   description: site.description,
 };

@@ -115,7 +115,61 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
         const step = isMobile ? 3 : 1;
 
         const res = await fetch(src);
-        const buf = await res.arrayBuffer();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        let buf: ArrayBuffer;
+        const contentLength = res.headers.get("content-length");
+        const totalExpected = contentLength ? parseInt(contentLength, 10) : 4606745;
+
+        if (res.body && typeof res.body.getReader === "function") {
+          const reader = res.body.getReader();
+          const chunks: Uint8Array[] = [];
+          let received = 0;
+
+          while (true) {
+            if (!alive) {
+              reader.cancel();
+              return;
+            }
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              chunks.push(value);
+              received += value.length;
+              const dlFraction = Math.min(1, received / totalExpected);
+              // Downloading accounts for 0% to 60% of overall loading progress
+              window.dispatchEvent(
+                new CustomEvent("page:progress", {
+                  detail: { progress: dlFraction * 0.6, phase: "download" },
+                })
+              );
+            }
+          }
+
+          const combined = new Uint8Array(received);
+          let offset = 0;
+          for (const c of chunks) {
+            combined.set(c, offset);
+            offset += c.length;
+          }
+          buf = combined.buffer;
+        } else {
+          buf = await res.arrayBuffer();
+          window.dispatchEvent(
+            new CustomEvent("page:progress", {
+              detail: { progress: 0.6, phase: "download" },
+            })
+          );
+        }
+
+        if (!alive) return;
+
+        window.dispatchEvent(
+          new CustomEvent("page:progress", {
+            detail: { progress: 0.65, phase: "parse" },
+          })
+        );
+
         const gif = parseGIF(buf);
         const rawFrames = decompressFrames(gif, true);
 
@@ -152,8 +206,11 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
             if (shouldKeepBitmap && bitmaps.length > 0) {
               bitmaps.push(await createImageBitmap(bitmaps[bitmaps.length - 1]));
             }
+            const decodeFraction = (fi + 1) / totalFrames;
             window.dispatchEvent(
-              new CustomEvent("page:progress", { detail: (fi + 1) / totalFrames })
+              new CustomEvent("page:progress", {
+                detail: { progress: 0.65 + decodeFraction * 0.35, phase: "decode" },
+              })
             );
             continue;
           }
@@ -183,9 +240,12 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
             savedImageData = null;
           }
 
-          // Emit real decode progress to PageLoader
+          // Emit real decode progress (65% to 98%) to PageLoader
+          const decodeFraction = (fi + 1) / totalFrames;
           window.dispatchEvent(
-            new CustomEvent("page:progress", { detail: (fi + 1) / totalFrames })
+            new CustomEvent("page:progress", {
+              detail: { progress: 0.65 + decodeFraction * 0.35, phase: "decode" },
+            })
           );
 
           // Yield to event loop every 6 frames so touch scroll and loader never stutter
@@ -208,10 +268,20 @@ export default function ScrollGifBackground({ src, onProgress }: Props) {
         );
         paintFrame(initialIdx);
 
+        // Mark global ready flag
+        (window as unknown as { __bgGifReady?: boolean }).__bgGifReady = true;
+
         // Signal PageLoader: GIF fully decoded and painted
+        window.dispatchEvent(
+          new CustomEvent("page:progress", { detail: { progress: 1.0, phase: "ready" } })
+        );
         window.dispatchEvent(new CustomEvent("page:ready"));
       } catch (err) {
         console.error("[ScrollGifBackground] Failed to decode GIF:", err);
+        (window as unknown as { __bgGifReady?: boolean }).__bgGifReady = true;
+        window.dispatchEvent(
+          new CustomEvent("page:progress", { detail: { progress: 1.0, phase: "error" } })
+        );
         window.dispatchEvent(new CustomEvent("page:ready"));
       }
     }
